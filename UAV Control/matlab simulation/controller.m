@@ -1,0 +1,215 @@
+function [F, M] = controller(t, s, s_des)
+
+global params
+
+m = params.mass;
+g = params.grav;
+I = params.I;
+l = params.armlength;
+
+% Assign state
+x = s(1);
+y = s(2);
+z = s(3);
+xdot = s(4);
+ydot = s(5);
+zdot = s(6);
+qW = s(7);
+qX = s(8);
+qY = s(9);
+qZ = s(10);
+p = s(11);
+q = s(12);
+r = s(13);
+
+x_des = s_des(1);
+y_des = s_des(2);
+z_des = s_des(3);
+xdot_des = s_des(4);
+ydot_des = s_des(5);
+zdot_des = s_des(6);
+qW_des = s_des(7);
+qX_des = s_des(8);
+qY_des = s_des(9);
+qZ_des = s_des(10);
+p_des = s_des(11);
+q_des = s_des(12);
+r_des = s_des(13);
+
+% 四元数转R
+Rot = QuatToRot([qW,qX,qY,qZ]');
+[phi,theta,psi] = RotToRPY_ZXY(Rot);
+Rot_des = QuatToRot([qW_des,qX_des,qY_des,qZ_des]');
+[phi_des,theta_des,psi_des] = RotToRPY_ZXY(Rot_des);
+
+phidot = p + q * sin(phi) * tan(theta)+r * cos(phi) * tan(theta);
+thetadot = q * cos(phi) - r * sin(phi);
+psidot = sin(phi)/cos(theta)*q + cos(phi)/cos(theta)*r;
+
+%% 位置控制
+% 指令滤波
+persistent x_des_1;
+persistent y_des_1;
+persistent z_des_1;
+persistent x_des_2;
+persistent y_des_2;
+persistent z_des_2;
+if isempty(x_des_1)
+    x_des_1 = 0;
+    y_des_1 = 0;
+    z_des_1 = 0;
+end
+if isempty(x_des_2)
+    x_des_2 = 0;
+    y_des_2 = 0;
+    z_des_2 = 0;
+end
+x_des_2 = x_des_1;
+y_des_2 = y_des_2;
+z_des_2 = z_des_1;
+x_des_1 = x_des;
+y_des_1 = y_des;
+z_des_1 = z_des;
+
+% 控制律
+L = [100, 0.5, 0; 100, 0.5, 0; 100, 0.1, 0];
+delta_x = x_des - x;
+delta_y = y_des - y;
+delta_z = z_des - z;
+delta_xdot = xdot_des - xdot;
+delta_ydot = ydot_des - ydot;
+delta_zdot = zdot_des - zdot;
+
+% PID
+persistent delta_x_1;
+persistent delta_y_1;
+persistent delta_z_1;
+persistent Ux_1;
+persistent Uy_1;
+persistent Uz_1;
+% 赋初值
+if isempty(delta_x_1)
+    delta_x_1 = 0;
+    delta_y_1 = 0;
+    delta_z_1 = 0;
+end
+if isempty(Ux_1)
+    Ux_1 = 0;
+    Uy_1 = 0;
+    Uz_1 = 0;
+end
+delta_x
+delta_y
+delta_z
+
+DUx = L(1) * (delta_x - delta_x_1) + L(4) * delta_x + L(7) * delta_xdot;
+DUy = L(2) * (delta_y - delta_y_1) + L(5) * delta_y + L(8) * delta_ydot;
+DUz = L(3) * (delta_z - delta_z_1) + L(6) * delta_z + L(9) * delta_zdot;
+Ux = DUx;
+Uy = DUy;
+Uz = DUz;
+Ux
+Uy
+Uz
+
+delta_x_1 = delta_x;
+delta_y_1 = delta_y;
+delta_z_1 = delta_z;
+Ux_1 = Ux;
+Uy_1 = Uy;
+Uz_1 = Uz;
+
+% 合力矩计算
+U1 = m * ((Ux^2 + Uy^2 + (Uz + g)^2))^(0.5);
+acd = sin(psi_des) * Ux - cos(psi_des)*Uy
+phi_des = asin(sin(psi_des) * Ux - cos(psi_des)*Uy)*m / U1;
+theta_des = asin((Ux * m - U1 * sin(psi_des)*sin(phi_des))/(U1 * cos(psi_des)*cos(phi_des)));
+U1
+F = U1;
+
+%% 姿态角控制
+% 指令滤波
+persistent phi_des_1;
+persistent theta_des_1;
+persistent psi_des_1;
+persistent phi_des_2;
+persistent theta_des_2;
+persistent psi_des_2;
+if isempty(phi_des_1)
+    phi_des_1 = 0;
+    theta_des_1 = 0;
+    psi_des_1 = 0;
+end
+if isempty(phi_des_2)
+    phi_des_2 = 0;
+    theta_des_2 = 0;
+    psi_des_2 = 0;
+end
+
+phidot_des = phi_des - phi_des_1;
+thetadot_des = theta_des - theta_des_1;
+psidot_des = psi_des - psi_des_1;
+phiddot_des = phi_des - 2*phi_des_1 + phi_des_2;
+thetaddot_des = theta_des - 2*theta_des_1 + theta_des_2;
+psiddot_des = psi_des - 2*psi_des_1 + psi_des_2;
+
+phi_des_2 = phi_des_1;
+theta_des_2 = theta_des_1;
+psi_des_2 = psi_des_1;
+phi_des_1 = phi_des;
+theta_des_1 = theta_des;
+psi_des_1 = psi_des;
+
+% 控制律
+K = [100, 5, 0.1; 100, 5, 0.3; 500, 5, 0.5];
+delta_phi = phi_des - phi;
+delta_theta = theta_des - theta;
+delta_psi = psi_des - psi;
+delta_phidot = phidot_des - phidot;
+delta_thetadot = thetadot_des - thetadot;
+delta_psidot = psidot_des - psidot;
+% PID
+persistent delta_phi_1;
+persistent delta_theta_1;
+persistent delta_psi_1;
+persistent Uphi_1;
+persistent Utheta_1;
+persistent Upsi_1;
+% 赋初值
+if isempty(delta_phi_1)
+    delta_phi_1 = 0;
+    delta_theta_1 = 0;
+    delta_psi_1 = 0;
+end
+if isempty(Uphi_1)
+    Uphi_1 = 0;
+    Utheta_1 = 0;
+    Upsi_1 = 0;
+end
+
+DUphi = K(1) * (delta_phi - delta_phi_1) + K(4) * delta_phi + K(7) * delta_phidot;
+DUtheta = K(2) * (delta_theta - delta_theta_1) + K(5) * delta_theta + K(8) * delta_thetadot;
+DUpsi = K(3) * (delta_psi - delta_psi_1) + K(6) * delta_psi + K(9) * delta_psidot;
+% Uphi =  DUphi + phiddot_des;
+% Utheta =  DUtheta + thetaddot_des;
+% Upsi =  DUpsi + psiddot_des;
+Uphi =  DUphi;
+Utheta = DUtheta;
+Upsi = DUpsi;
+
+delta_phi_1 = delta_phi;
+delta_theta_1 = delta_theta;
+delta_psi_1 = delta_psi;
+Uphi_1 = Uphi;
+Utheta_1 = Utheta;
+Upsi_1 = Upsi;
+
+% 力矩变换
+U2 = Uphi * I(1) / l;
+U3 = Utheta * I(5) / l;
+U4 = Upsi * I(9);
+M = [U2, U3, U4]';
+
+% F = 1.0; M = [0.0, 0.0, 0.0]'; % You should calculate the output F and M
+
+end
