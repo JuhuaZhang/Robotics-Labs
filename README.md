@@ -13,5 +13,11 @@ After that, I combined them and simulated robot navigation and obstacle avoidanc
 ## Posistion control for drones
 My groupmates and I built a drone from scratch and applied the proportional–integral–derivative (PID) algorithm to control the drone to hover in the air and could resist a certain amount of interference.
 
+The video is a little bit noisy, please lower the volume.
+
+<video src="videos/drone.mp4" width="600px" controls="controls"></video>
+
 ## Motion Planning for robotic arms 
 We model the robot arm by positive kinematics and use inverse kinematics to solve the position and pose of the robot arm to control it to follow a given route.
+
+<video src="videos/arm.mp4" width="600px" controls="controls"></video>
