@@ -10,10 +10,13 @@ I implemented several algorithms in the trajectory planning of mobile robots. Th
 
 After that, I combined them and simulated robot navigation and obstacle avoidance in the Gazebo.
 
+| <img src="videos/traj_1.jpg" width="350px" /> | <img src="videos/traj_2.jpg" width="350px" /> |
+
+
 ## Posistion control for drones
 My groupmates and I built a drone from scratch and applied the proportional–integral–derivative (PID) algorithm to control the drone to hover in the air and could resist a certain amount of interference.
 
-The video is a little bit noisy, please lower the volume.
+The video is a little bit noisy, please lower the volume ahead.
 
 <video src="videos/drone.mp4" width="600px" controls="controls"></video>
 
